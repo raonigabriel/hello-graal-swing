@@ -1,0 +1,10 @@
+Package: ${project.artifactId}
+Version: ${project.version}
+Architecture: amd64
+Section: misc
+Priority: optional
+Maintainer: Raoni Gabriel <raonigabriel@gmail.com>
+Depends:
+Homepage: ${project.url}
+Description: ${project.description}
+Depends: libxrender1, libxext6, libxi6, libstdc++6, zlib1g, libgcc1, libxcb1, libxau6, libxdmcp6, libbsd0

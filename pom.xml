@@ -1,0 +1,221 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.github.raonigabriel</groupId>
+	<artifactId>hello-graal-swing</artifactId>
+	<version>0.0.1</version>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<main.class>com.github.raonigabriel.SwingApp</main.class>
+		<graalvm.version>21.2.0</graalvm.version>
+	</properties>
+
+	<name>spring-qrcode-example</name>
+	<description>A simple example to demonstrate that GraalVM can be used to create GUI apps.</description>
+	<url>https://github.com/raonigabriel/hello-graal-swing/README.md</url>
+
+	<licenses>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0</url>
+		</license>
+	</licenses>
+
+	<scm>
+		<url>https://github.com/raonigabriel/hello-graal-swing</url>
+	</scm>
+
+	<developers>
+		<developer>
+			<id>raonigabriel</id>
+			<name>Raoni Gabriel</name>
+			<timezone>-3</timezone>
+			<url>https://github.com/raonigabriel</url>
+			<roles>
+				<role>Java/Cloud Software Architect</role>
+				<role>DevOps Engineer</role>
+			</roles>
+		</developer>
+	</developers>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.graalvm.sdk</groupId>
+			<artifactId>graal-sdk</artifactId>
+			<version>${graalvm.version}</version>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>false</filtering>
+			</resource>
+			<resource>
+				<directory>src/deb/control</directory>
+				<filtering>true</filtering>
+				<targetPath>${project.build.directory}/control</targetPath>
+			</resource>
+		</resources>
+
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>3.8.1</version>
+					<configuration>
+						<release>11</release>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-jar-plugin</artifactId>
+					<version>3.2.0</version>
+				</plugin>
+				<plugin>
+					<groupId>org.codehaus.mojo</groupId>
+					<artifactId>exec-maven-plugin</artifactId>
+					<version>1.6.0</version>
+				</plugin>
+				<plugin>
+					<artifactId>jdeb</artifactId>
+					<groupId>org.vafer</groupId>
+					<version>1.8</version>
+				</plugin>
+				<plugin>
+					<groupId>org.graalvm.nativeimage</groupId>
+					<artifactId>native-image-maven-plugin</artifactId>
+					<version>${graalvm.version}</version>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+
+		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<phase>prepare-package</phase>
+					</execution>
+				</executions>
+				<configuration>
+					<executable>java</executable>
+					<skip>true</skip>
+					<arguments>
+						<argument>
+							-agentlib:native-image-agent=config-output-dir=${basedir}/src/main/resources/META-INF/native-image/${project.groupId}/${project.artifactId}
+						</argument>
+						<argument>-classpath</argument>
+						<argument>${main.class}</argument>
+					</arguments>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifest>
+							<addClasspath>true</addClasspath>
+							<mainClass>${main.class}</mainClass>
+						</manifest>
+					</archive>
+				</configuration>
+			</plugin>
+		</plugins>
+
+	</build>
+
+	<profiles>
+		<profile>
+			<id>native-linux</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.graalvm.nativeimage</groupId>
+						<artifactId>native-image-maven-plugin</artifactId>
+						<executions>
+							<execution>
+								<goals>
+									<goal>native-image</goal>
+								</goals>
+								<phase>package</phase>
+							</execution>
+						</executions>
+						<configuration>
+							<mainClass>${main.class}</mainClass>
+							<imageName>${project.artifactId}</imageName>
+						</configuration>
+					</plugin>
+
+					<plugin>
+						<artifactId>jdeb</artifactId>
+						<groupId>org.vafer</groupId>
+						<executions>
+							<execution>
+								<id>build-deb</id>
+								<phase>package</phase>
+								<goals>
+									<goal>jdeb</goal>
+								</goals>
+								<configuration>
+									<compression>bzip2</compression>
+									<controlDir>${project.build.directory}/control</controlDir>
+									<deb>[[buildDir]]/[[artifactId]]_[[version]]_amd64.[[extension]]</deb>
+									<dataSet>
+										<data>
+											<src>${project.build.directory}/${project.artifactId}</src>
+											<type>file</type>
+											<mapper>
+												<type>perm</type>
+												<prefix>/usr/bin</prefix>
+												<filemode>755</filemode>
+											</mapper>
+										</data>
+									</dataSet>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		
+		<profile>
+			<id>native-windows</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.graalvm.nativeimage</groupId>
+						<artifactId>native-image-maven-plugin</artifactId>
+						<executions>
+							<execution>
+								<goals>
+									<goal>native-image</goal>
+								</goals>
+								<phase>package</phase>
+							</execution>
+						</executions>
+						<configuration>
+							<mainClass>${main.class}</mainClass>
+							<imageName>${project.artifactId}</imageName>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
+</project>

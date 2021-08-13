@@ -1,0 +1,79 @@
+# This workflow will build a Java project with Maven
+name: GraalVM Native Image build
+
+on:
+  push:
+    branches: [ master ]
+    tags: [ '*' ]
+
+jobs:
+  buildOnLinux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup GraalVM
+        uses: ayltai/setup-graalvm@v1
+        with:
+          java-version: 11
+          graalvm-version: 21.2.0
+          native-image: true
+      - name: Install packages
+        run: sudo apt-get -y install libxi-dev
+      - name: Cache local Maven repository          
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Build with Maven
+        run: mvn -Pnative-linux -B clean package --file pom.xml
+      - name: Stage artifacts
+        run: mkdir staging && cp target/*.jar staging && cp target/*.deb staging
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifacts
+          path: staging
+          if-no-files-found: warn
+
+  buildOnWindows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Configure MSVC++
+        uses: ilammy/msvc-dev-cmd@v1.5.0
+      - name: Setup msbuild      
+        uses: microsoft/setup-msbuild@v1
+      - name: Setup GraalVM
+        uses: ayltai/setup-graalvm@v1
+        with:
+          java-version: 11
+          graalvm-version: 21.2.0
+          native-image: true
+      - name: Cache local Maven repository          
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Build with Maven
+        run: mvn -Pnative-windows -B clean package --file pom.xml
+        shell: powershell
+      - name: Run UPX
+        uses: crazy-max/ghaction-upx@v1.3.3
+        with:
+          version: latest
+          file: target/hello-graal-swing.exe
+          args: '-7'
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          if-no-files-found: warn
+          name: artifacts
+          path: target/*.exe
