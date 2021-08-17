@@ -5,13 +5,14 @@
 
 	<groupId>com.github.raonigabriel</groupId>
 	<artifactId>hello-graal-swing</artifactId>
-	<version>0.0.1</version>
+	<version>0.0.2</version>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<main.class>com.github.raonigabriel.SwingApp</main.class>
 		<graalvm.version>21.2.0</graalvm.version>
+		<skip.deb>false</skip.deb>
 	</properties>
 
 	<name>spring-qrcode-example</name>
@@ -52,21 +53,23 @@
 	</dependencies>
 
 	<build>
-
-		<resources>
-			<resource>
-				<directory>src/main/resources</directory>
-				<filtering>false</filtering>
-			</resource>
-			<resource>
-				<directory>src/deb/control</directory>
-				<filtering>true</filtering>
-				<targetPath>${project.build.directory}/control</targetPath>
-			</resource>
-		</resources>
-
 		<pluginManagement>
 			<plugins>
+				<plugin>
+					<groupId>kr.motd.maven</groupId>
+					<artifactId>os-maven-plugin</artifactId>
+					<version>1.7.0</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-enforcer-plugin</artifactId>
+					<version>3.0.0</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-resources-plugin</artifactId>
+					<version>3.2.0</version>
+				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-compiler-plugin</artifactId>
@@ -74,6 +77,11 @@
 					<configuration>
 						<release>11</release>
 					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-clean-plugin</artifactId>
+					<version>3.1.0</version>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
@@ -99,29 +107,46 @@
 		</pluginManagement>
 
 		<plugins>
+			<!-- Plugin to detect and normalize OS info -->
 			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>exec-maven-plugin</artifactId>
+				<groupId>kr.motd.maven</groupId>
+				<artifactId>os-maven-plugin</artifactId>
 				<executions>
 					<execution>
+						<phase>initialize</phase>
 						<goals>
-							<goal>exec</goal>
+							<goal>detect</goal>
 						</goals>
-						<phase>prepare-package</phase>
 					</execution>
 				</executions>
-				<configuration>
-					<executable>java</executable>
-					<skip>true</skip>
-					<arguments>
-						<argument>
-							-agentlib:native-image-agent=config-output-dir=${basedir}/src/main/resources/META-INF/native-image/${project.groupId}/${project.artifactId}
-						</argument>
-						<argument>-classpath</argument>
-						<argument>${main.class}</argument>
-					</arguments>
-				</configuration>
 			</plugin>
+			<!-- Plugin to make sure we are running on Java 11 -->			
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>enforce-java</id>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<requireJavaVersion>
+									<version>11</version>
+								</requireJavaVersion>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- <plugin> <groupId>org.codehaus.mojo</groupId> <artifactId>exec-maven-plugin</artifactId> 
+				<executions> <execution> <goals> <goal>exec</goal> </goals> <phase>prepare-package</phase> 
+				</execution> </executions> <configuration> <executable>java</executable> 
+				<skip>true</skip> <arguments> <argument> -agentlib:native-image-agent=config-output-dir=${basedir}/src/main/resources/${os.detected.name}/META-INF/native-image/${project.groupId}/${project.artifactId} 
+				</argument> <argument>-classpath</argument> <argument>${main.class}</argument> 
+				</arguments> </configuration> </plugin> -->
+			<!-- Plugin to pack JAR and make it executable -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
@@ -135,14 +160,67 @@
 				</configuration>
 			</plugin>
 		</plugins>
-
 	</build>
 
 	<profiles>
 		<profile>
-			<id>native-linux</id>
+			<id>active-on-linux</id>
+			<activation>
+				<os>
+					<family>unix</family>
+				</os>
+			</activation>
+			<properties>
+				<skip.deb>false</skip.deb>
+			</properties>
+		</profile>
+
+		<profile>
+			<id>native</id>
 			<build>
 				<plugins>
+					<!-- Plugin to copy OS dependant resources -->
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-resources-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>copy-native-image-meta-inf</id>
+								<phase>process-resources</phase>
+								<goals>
+									<goal>copy-resources</goal>
+								</goals>
+								<configuration>
+									<outputDirectory>${basedir}/target/classes/META-INF</outputDirectory>
+									<resources>
+										<resource>
+											<directory>src/main/resources/${os.detected.name}/META-INF</directory>
+											<filtering>false</filtering>
+										</resource>
+									</resources>
+								</configuration>
+							</execution>
+							<execution>
+								<id>copy-deb-control</id>
+								<phase>process-resources</phase>
+								<goals>
+									<goal>copy-resources</goal>
+								</goals>
+								<configuration>
+									<skip>${skip.deb}</skip>
+									<outputDirectory>${basedir}/target/classes</outputDirectory>
+									<resources>
+										<resource>
+											<directory>src/main/resources/${os.detected.name}/deb/control</directory>
+											<filtering>true</filtering>
+											<targetPath>${project.build.directory}/control</targetPath>
+										</resource>
+									</resources>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<!-- This plugin will create the actual native Linux binary. -->
 					<plugin>
 						<groupId>org.graalvm.nativeimage</groupId>
 						<artifactId>native-image-maven-plugin</artifactId>
@@ -159,7 +237,29 @@
 							<imageName>${project.artifactId}</imageName>
 						</configuration>
 					</plugin>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>exec-maven-plugin</artifactId>
+						<executions>
+							<!-- Then we strip (remove symbols) the binary -->
+							<execution>
+								<id>strip-binary</id>
+								<phase>package</phase>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+								<configuration>
+									<executable>strip</executable>
+									<workingDirectory>${project.build.directory}</workingDirectory>
+									<arguments>
+										<argument>${project.artifactId}</argument>
+									</arguments>
+								</configuration>
+							</execution>
 
+						</executions>
+					</plugin>
+					<!-- Finally, we will generate a deb package with the native binary -->
 					<plugin>
 						<artifactId>jdeb</artifactId>
 						<groupId>org.vafer</groupId>
@@ -171,6 +271,7 @@
 									<goal>jdeb</goal>
 								</goals>
 								<configuration>
+									<skip>${skip.deb}</skip>
 									<compression>bzip2</compression>
 									<controlDir>${project.build.directory}/control</controlDir>
 									<deb>[[buildDir]]/[[artifactId]]_[[version]]_amd64.[[extension]]</deb>
@@ -192,30 +293,7 @@
 				</plugins>
 			</build>
 		</profile>
-		
-		<profile>
-			<id>native-windows</id>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>org.graalvm.nativeimage</groupId>
-						<artifactId>native-image-maven-plugin</artifactId>
-						<executions>
-							<execution>
-								<goals>
-									<goal>native-image</goal>
-								</goals>
-								<phase>package</phase>
-							</execution>
-						</executions>
-						<configuration>
-							<mainClass>${main.class}</mainClass>
-							<imageName>${project.artifactId}</imageName>
-						</configuration>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
+
 	</profiles>
 
 </project>
