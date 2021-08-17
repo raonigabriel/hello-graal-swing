@@ -5,7 +5,7 @@
 
 	<groupId>com.github.raonigabriel</groupId>
 	<artifactId>hello-graal-swing</artifactId>
-	<version>0.0.2</version>
+	<version>0.0.3</version>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -178,6 +178,15 @@
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-resources-plugin</artifactId>
 						<executions>
+							<!-- Skip default execution of this plugin -->
+							<execution>
+								<id>default-resources</id>
+								<phase>none</phase>
+							</execution>
+							<execution>
+								<id>default-testResources</id>
+								<phase>none</phase>
+							</execution>
 							<execution>
 								<id>copy-native-image-meta-inf</id>
 								<phase>process-resources</phase>
@@ -185,6 +194,7 @@
 									<goal>copy-resources</goal>
 								</goals>
 								<configuration>
+									<skip>${skip.deb}</skip>
 									<outputDirectory>${basedir}/target/classes/META-INF</outputDirectory>
 									<resources>
 										<resource>
