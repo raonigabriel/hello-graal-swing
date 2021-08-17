@@ -21,7 +21,7 @@ jobs:
           native-image: true
       - name: Install packages
         run: sudo apt-get -y install libxi-dev
-      - name: Cache local Maven repository          
+      - name: Cache local Maven repository
         uses: actions/cache@v2
         with:
           path: ~/.m2/repository
@@ -55,7 +55,7 @@ jobs:
           java-version: 11
           graalvm-version: 21.2.0
           native-image: true
-      - name: Cache local Maven repository          
+      - name: Cache local Maven repository
         uses: actions/cache@v2
         with:
           path: ~/.m2/repository
