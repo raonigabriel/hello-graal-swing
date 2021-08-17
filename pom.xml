@@ -5,14 +5,14 @@
 
 	<groupId>com.github.raonigabriel</groupId>
 	<artifactId>hello-graal-swing</artifactId>
-	<version>0.0.3</version>
+	<version>0.0.4</version>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<main.class>com.github.raonigabriel.SwingApp</main.class>
 		<graalvm.version>21.2.0</graalvm.version>
-		<skip.deb>false</skip.deb>
+		<skip.deb>true</skip.deb>
 	</properties>
 
 	<name>spring-qrcode-example</name>
