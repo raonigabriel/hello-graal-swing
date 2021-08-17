@@ -120,7 +120,7 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!-- Plugin to make sure we are running on Java 11 -->			
+			<!-- Plugin to make sure we are running on Java 11 -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-enforcer-plugin</artifactId>
@@ -140,12 +140,6 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!-- <plugin> <groupId>org.codehaus.mojo</groupId> <artifactId>exec-maven-plugin</artifactId> 
-				<executions> <execution> <goals> <goal>exec</goal> </goals> <phase>prepare-package</phase> 
-				</execution> </executions> <configuration> <executable>java</executable> 
-				<skip>true</skip> <arguments> <argument> -agentlib:native-image-agent=config-output-dir=${basedir}/src/main/resources/${os.detected.name}/META-INF/native-image/${project.groupId}/${project.artifactId} 
-				</argument> <argument>-classpath</argument> <argument>${main.class}</argument> 
-				</arguments> </configuration> </plugin> -->
 			<!-- Plugin to pack JAR and make it executable -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -249,6 +243,7 @@
 									<goal>exec</goal>
 								</goals>
 								<configuration>
+									<skip>${skip.deb}</skip>
 									<executable>strip</executable>
 									<workingDirectory>${project.build.directory}</workingDirectory>
 									<arguments>
@@ -289,6 +284,35 @@
 								</configuration>
 							</execution>
 						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>trace</id>
+			<build>
+				<plugins>
+					<!-- Plugin generate OS specific native-image tracing info -->
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>exec-maven-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>execute-with-native-image-agent</id>
+								<goals>
+									<goal>exec</goal>
+								</goals>
+								<phase>integration-test</phase>
+							</execution>
+						</executions>
+						<configuration>
+							<executable>${env.GRAALVM_HOME}/bin/java</executable>
+							<arguments>
+								<argument>-agentlib:native-image-agent=config-output-dir=${basedir}/src/main/resources/${os.detected.name}/META-INF/native-image/${project.groupId}/${project.artifactId}</argument>
+								<argument>-jar</argument>
+								<argument>${project.build.directory}/${project.build.finalName}.jar</argument>
+							</arguments>
+						</configuration>
 					</plugin>
 				</plugins>
 			</build>
